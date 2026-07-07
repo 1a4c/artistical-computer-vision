@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSL 跨界閉環控制模擬器 (Web Simulator)</title>
+    <style>
+        :root {
+            --bg-color: #0a0f1d;
+            --panel-bg: #131a30;
+            --text-color: #e0e6ed;
+            --accent-cyan: #00f0ff;
+            --accent-green: #39ff14;
+            --accent-red: #ff3131;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid #233554;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .panel-title {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--accent-cyan);
+            border-bottom: 1px solid #233554;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 控制項樣式 */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            color: #8892b0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            background: #233554;
+            accent-color: var(--accent-cyan);
+        }
+
+        .status-value {
+            float: right;
+            color: var(--text-color);
+        }
+
+        /* 畫布區 */
+        canvas {
+            width: 100%;
+            background: #070a13;
+            border: 1px solid #233554;
+            border-radius: 4px;
+        }
+
+        #centerCanvas {
+            height: 500px;
+        }
+
+        #scholesCanvas, #mosfetCanvas {
+            height: 180px;
+        }
+
+        /* 狀態指示燈 */
+        .trigger-zone {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .led {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: #333;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
+            transition: all 0.2s ease;
+        }
+
+        .led.active {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 15px var(--accent-green);
+        }
+
+        .led.error {
+            background-color: var(--accent-red);
+            box-shadow: 0 0 15px var(--accent-red);
+        }
+
+        .code-box {
+            background: #050811;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #a8b2d1;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            border-left: 3px solid var(--accent-cyan);
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>DSL CLOSED-LOOP REALTIME SIMULATOR</h1>
+
+    <div class="container">
+        <div class="panel">
+            <div class="panel-title">1. Biosensor & Scholes Measure</div>
+            
+            <div class="control-group">
+                <label>Pupil Stress (瞳孔壓力) <span id="pupilVal" class="status-value">50%</span></label>
+                <input type="range" id="pupilSlider" min="0" max="100" value="50">
+            </div>
+
+            <div class="control-group">
+                <label>Cognition Status (認知狀態) <span id="cognitionVal" class="status-value">50%</span></label>
+                <input type="range" id="cognitionSlider" min="0" max="100" value="50">
+            </div>
+
+            <label>Scholes Stochastic Track (環境歷史輪廓)</label>
+            <canvas id="scholesCanvas"></canvas>
+            
+            <div class="code-box">
+Scholes_stochastic_measure(
+  tick_zone(network_change_ENV.()
+  _outline_silhouette_info.history())
+)
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">2. Snail Tau Reversed & Eigen Matrix Alignment</div>
+            <canvas id="centerCanvas"></canvas>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">3. MOSFET Sphere & Trigger Zone</div>
+            
+            <label>MOSFET Sphere Saturation (電洞飽和度)</label>
+            <canvas id="mosfetCanvas"></canvas>
+
+            <div class="trigger-zone">
+                <span>Lens Activity Trigger Zone</span>
+                <div id="triggerLed" class="led"></div>
+            </div>
+
+            <div class="trigger-zone">
+                <span>Queue Reassigned Client</span>
+                <span id="queueCount" style="color: var(--accent-cyan); font-weight: bold;">0</span>
+            </div>
+
+            <div class="code-box">
+hole_empowered_saturation_level
+.lens_activity_trigger_zone(
+  quartz_ascribed_route_scale_oscillated[
+    nerve_generated_network
+    .adjacent_arranged(...)
+  ]
+)
+            </div>
+            
+            <button id="audioBtn" style="width:100%; margin-top:15px; padding:8px; background:#233554; border:1px solid var(--accent-cyan); color:var(--text-color); cursor:pointer; font-family:inherit; font-size:0.8rem;">
+                開啟系統量子音頻模擬
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 初始化畫布
+        const cCanvas = document.getElementById('centerCanvas');
+        const sCanvas = document.getElementById('scholesCanvas');
+        const mCanvas = document.getElementById('mosfetCanvas');
+        
+        const ctxC = cCanvas.getContext('2d');
+        const ctxS = sCanvas.getContext('2d');
+        const ctxM = mCanvas.getContext('2d');
+
+        // 響應式調整畫布解析度
+        function resizeCanvases() {
+            cCanvas.width = cCanvas.clientWidth; cCanvas.height = cCanvas.clientHeight;
+            sCanvas.width = sCanvas.clientWidth; sCanvas.height = sCanvas.clientHeight;
+            mCanvas.width = mCanvas.clientWidth; mCanvas.height = mCanvas.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvases);
+        resizeCanvases();
+
+        // 系統變數
+        let pupilStress = 0.5;
+        let cognitionStatus = 0.5;
+        let scholesHistory = Array(50).fill(100);
+        let rotationPhase = 0;
+        let audioCtx = null;
+        let oscillator = null;
+
+        // UI 監聽
+        document.getElementById('pupilSlider').addEventListener('input', (e) => {
+            pupilStress = e.target.value / 100;
+            document.getElementById('pupilVal').innerText = e.target.value + '%';
+        });
+        document.getElementById('cognitionSlider').addEventListener('input', (e) => {
+            cognitionStatus = e.target.value / 100;
+            document.getElementById('cognitionVal').innerText = e.target.value + '%';
+        });
+
+        // 簡單音效啟動
+        document.getElementById('audioBtn').addEventListener('click', () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                oscillator = audioCtx.createOscillator();
+                let gainNode = audioCtx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(220, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                document.getElementById('audioBtn').innerText = "音頻系統已連線";
+                document.getElementById('audioBtn').style.borderColor = "var(--accent-green)";
+            }
+        });
+
+        // 核心迴圈
+        function render() {
+            rotationPhase += 0.02;
+
+            // 1. 計算 Scholes 隨機過程 (隨機幾何布朗運動模擬)
+            const lastVal = scholesHistory[scholesHistory.length - 1];
+            const drift = 0.02;
+            const volatility = pupilStress * 0.5; // 瞳孔壓力影響波動率
+            const rand = (Math.random() - 0.5) * 2;
+            const newVal = lastVal * Math.exp((drift - 0.5 * volatility**2) + volatility * rand * 0.3);
+            scholesHistory.push(newVal);
+            if(scholesHistory.length > 60) scholesHistory.shift();
+
+            // 繪製 Scholes 畫布
+            ctxS.clearRect(0, 0, sCanvas.width, sCanvas.height);
+            ctxS.strokeStyle = '#00f0ff';
+            ctxS.lineWidth = 1.5;
+            ctxS.beginPath();
+            let stepX = sCanvas.width / scholesHistory.length;
+            let minH = Math.min(...scholesHistory);
+            let maxH = Math.max(...scholesHistory);
+            let rangeH = (maxH - minH) || 1;
+            for(let i=0; i<scholesHistory.length; i++) {
+                let x = i * stepX;
+                let y = sCanvas.height - ((scholesHistory[i] - minH) / rangeH * (sCanvas.height - 20) + 10);
+                if(i===0) ctxS.moveTo(x,y); else ctxS.lineTo(x,y);
+            }
+            ctxS.stroke();
+
+            // 2. 中央拓撲幾何：Snail Tau Reversed & Eigen Matrix 斷言
+            ctxC.clearRect(0, 0, cCanvas.width, cCanvas.height);
+            let centerX = cCanvas.width / 2;
+            let centerY = cCanvas.height / 2;
+
+            // 繪製蝸牛反轉螺旋 (Snail Tau Reversed)
+            ctxC.strokeStyle = 'rgba(35, 53, 84, 0.4)';
+            ctxC.lineWidth = 1;
+            ctxC.beginPath();
+            for (let i = 0; i < 300; i++) {
+                let angle = 0.1 * i - rotationPhase;
+                let r = 0.8 * i;
+                let x = centerX + Math.cos(angle) * r;
+                let y = centerY - Math.sin(angle) * r; // Reversed direction
+                if(i===0) ctxC.moveTo(x,y); else ctxC.lineTo(x,y);
+            }
+            ctxC.stroke();
+
+            // 計算生理聯集結構 (Union determined)
+            let unionSignal = (pupilStress + cognitionStatus) / 2;
+            
+            // 粒子本徵矩陣點 (Sigma Particle Eigen Matrix)
+            let eigenX = centerX + Math.sin(unionSignal * Math.PI * 2) * 120;
+            let eigenY = centerY + Math.cos(unionSignal * Math.PI * 2) * 120;
+
+            // 目標全相位動態圖樣 (Allocated full phased pattern)
+            let targetX = centerX + Math.sin(rotationPhase) * 120;
+            let targetY = centerY + Math.cos(rotationPhase) * 120;
+
+            // 斷言驗證 (Assert With)
+            let distance = Math.sqrt((eigenX - targetX)**2 + (eigenY - targetY)**2);
+            let isAssertPassed = distance < 45; // 誤差臨界值
+
+            // 繪製目標相位環
+            ctxC.strokeStyle = isAssertPassed ? 'rgba(57, 255, 20, 0.2)' : 'rgba(255, 49, 49, 0.1)';
+            ctxC.fillStyle = isAssertPassed ? 'rgba(57, 255, 20, 0.05)' : 'rgba(255, 49, 49, 0.02)';
+            ctxC.beginPath();
+            ctxC.arc(targetX, targetY, 40, 0, Math.PI*2);
+            ctxC.fill();
+            ctxC.stroke();
+
+            // 繪製本徵粒子
+            ctxC.fillStyle = isAssertPassed ? varColor('--accent-green') : varColor('--accent-cyan');
+            ctxC.shadowBlur = 15;
+            ctxC.shadowColor = ctxC.fillStyle;
+            ctxC.beginPath();
+            ctxC.arc(eigenX, eigenY, 8, 0, Math.PI*2);
+            ctxC.fill();
+            ctxC.shadowBlur = 0; // reset
+
+            // 連線導引線
+            ctxC.strokeStyle = isAssertPassed ? 'var(--accent-green)' : 'rgba(255,255,255,0.1)';
+            ctxC.setLineDash([5, 5]);
+            ctxC.beginPath();
+            ctxC.moveTo(eigenX, eigenY);
+            ctxC.lineTo(targetX, targetY);
+            ctxC.stroke();
+            ctxC.setLineDash([]);
+
+            // 3. 狀態更新與右側 MOSFET 球體
+            const led = document.getElementById('triggerLed');
+            const queueCount = document.getElementById('queueCount');
+            
+            if(isAssertPassed) {
+                led.className = "led active";
+                queueCount.innerText = Math.floor(unionSignal * 200 + 10);
+                if(oscillator) oscillator.frequency.setValueAtTime(440 + unionSignal*100, audioCtx.currentTime);
+            } else {
+                led.className = "led error";
+                queueCount.innerText = "SATURATED";
+                if(oscillator) oscillator.frequency.setValueAtTime(150 + rand*20, audioCtx.currentTime);
+            }
+
+            // 繪製 MOSFET 球體電洞飽和度
+            ctxM.clearRect(0, 0, mCanvas.width, mCanvas.height);
+            let mCenterX = mCanvas.width / 2;
+            let mCenterY = mCanvas.height / 2;
+            let radius = 50;
+            
+            ctxM.strokeStyle = '#233554';
+            ctxM.beginPath();
+            ctxM.arc(mCenterX, mCenterY, radius, 0, Math.PI*2);
+            ctxM.stroke();
+
+            // 渲染球體表面的點（飽和度越高，粒子越密集混亂）
+            ctxM.fillStyle = 'rgba(0, 240, 255, ' + (0.3 + unionSignal*0.7) + ')';
+            let dotCount = Math.floor(50 + unionSignal * 150);
+            for(let i=0; i<dotCount; i++) {
+                let randAng = i * 2.3 + rotationPhase * 0.1;
+                let randR = Math.sin(i)*radius;
+                let dx = mCenterX + Math.cos(randAng) * randR;
+                let dy = mCenterY + Math.sin(randAng) * randR;
+                ctxM.fillRect(dx, dy, 2, 2);
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        // 輔助函式：取得 CSS 變數
+        function varColor(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        // 啟動
+        render();
+    </script>
+</body>
+</html>
